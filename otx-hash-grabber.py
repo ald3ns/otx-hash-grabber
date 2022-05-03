@@ -18,7 +18,7 @@ def main():
 
     # Some important variables
     url = "https://otx.alienvault.com/otxapi/malware/samples?"
-    key = "3c33ae9be841e6c05eede941020a37f8bca1097917dd5064a15decbabcb09a79"
+    key = ""
 
     # Setup the argument parser
     parser = setup_parser()
