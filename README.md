@@ -1,4 +1,4 @@
-# OTX Family Hash Grabber
+# OTX Malware Family Hash Grabber
 
 A simple little script to download all of the sample hashes from a specific malware family. Was slow so I added some absolutely scuffed threading. Now it's really fast but sometimes crashes. If it doesn't quite work, just try running it again and it'll probably be fine. 
 
