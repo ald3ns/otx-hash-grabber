@@ -2,6 +2,9 @@ import requests
 import argparse
 import json
 from rich.progress import track
+import threading 
+
+file_contents = []
 
 def setup_parser():
     '''
@@ -14,22 +17,53 @@ def setup_parser():
     parser.add_argument("-o", "--output", type=str, help="Name of your output file")
     return parser
 
-def main():
+def grab_hash(page_num: int, key: str, family: str, format: str):
 
+    # Some important variables
+    url = "https://otx.alienvault.com/otxapi/malware/samples?"
+
+    headers = {
+        "X-OTX-API-KEY":key
+    }
+
+    # These are the URL parameters, change them as you see fit
+    payload = {
+        "family":family,
+        "limit":1000,
+        "page":page_num
+    }
+
+    # Make the updated request and parse to JSON
+    hashes = json.loads(requests.get(url, headers=headers, params=payload).text)
+
+    # Loop over the results
+    for result in hashes["results"]:
+        if format == "md5":
+            file_contents.append(result['md5'])
+        elif format == "sha1":
+            file_contents.append(result['sha1'])
+        elif format == "sha256":
+            file_contents.append(result['sha256'])
+        else:
+            file_contents.append(f"{result['md5']} {result['sha1']} {result['sha256']}")
+
+def main():
     # Some important variables
     url = "https://otx.alienvault.com/otxapi/malware/samples?"
     key = ""
 
     # Setup the argument parser
     parser = setup_parser()
-    args = parser.parse_args()
+    user_args = parser.parse_args()
 
     # Check if the API key was supplied, if no then use the supplied key
-    if key == "" and args.key != None:
+    if key == "" and user_args.key != None:
+        thread_key = user_args.key
         headers = {
-            "X-OTX-API-KEY":args.key
+            "X-OTX-API-KEY":user_args.key
         }
     elif key != "":
+        thread_key = key
         headers = {
             "X-OTX-API-KEY":key
         }
@@ -39,7 +73,7 @@ def main():
 
     # These are the URL parameters, change them as you see fit
     payload = {
-        "family":args.family,
+        "family":user_args.family,
         "limit":1000,
         "page":1
     }
@@ -49,42 +83,26 @@ def main():
     num_samples = number["count"]
     print(f"Expecting {num_samples} hashes")
 
-    # Create the output array for writing or printing
-    to_write = []
+    # Create threads array
+    threads = []
+    for i in range(1, (num_samples//1000)+2):
+        t = threading.Thread(target=grab_hash, args=(i,thread_key,user_args.family,user_args.format))
+        threads.append(t)
+        t.start()
 
-    # Loop over all of the page numbers
-    for page in track(range(1, (num_samples//1000)+2), description="[green]Downloading..."):
+    for thread in track(threads):
+        thread.join()
 
-        # Update the page
-        payload["page"] = page
-
-        # Make the updated request and parse to JSON
-        hashes = json.loads(requests.get(url, headers=headers, params=payload).text)
-
-        # Loop over the results
-        for result in hashes["results"]:
-            if args.format == "md5":
-                to_write.append(result['md5'])
-            elif args.format == "sha1":
-                to_write.append(result['sha1'])
-            elif args.format == "sha256":
-                to_write.append(result['sha256'])
-            else:
-                to_write.append(f"{result['md5']} {result['sha1']} {result['sha256']}")
-
-    # Check if we should write to a file if so do that
-    if args.output != None:
-        file = open(args.output, "w")
-        for i in to_write:
-            file.write(i)
-            file.write("\n")
+     # Check if we should write to a file if so do that
+    if user_args.output != None:
+        file = open(user_args.output, "w")
+        file.write('\n'.join([str(content) for content in file_contents]))
         file.close()
     else:
-        for i in to_write:
+        for i in file_contents:
             print(i)
 
-    print(f"Successfully wrote hashes to {args.output}")
-
-
+    print(f"Successfully wrote hashes to {user_args.output}")
+   
 if __name__ == "__main__":
     main()
