@@ -48,6 +48,9 @@ def grab_hash(page_num: int, key: str, family: str, format: str):
             file_contents.append(f"{result['md5']} {result['sha1']} {result['sha256']}")
 
 def main():
+
+    print("Starting!")
+
     # Some important variables
     url = "https://otx.alienvault.com/otxapi/malware/samples?"
     key = ""
@@ -74,7 +77,7 @@ def main():
     # These are the URL parameters, change them as you see fit
     payload = {
         "family":user_args.family,
-        "limit":1000,
+        "limit":1,
         "page":1
     }
 
@@ -83,6 +86,9 @@ def main():
     num_samples = number["count"]
     print(f"Expecting {num_samples} hashes")
 
+    # Change the payload back to what it should be normally
+    payload["limit"] = 1000
+    
     # Create threads array
     threads = []
     for i in range(1, (num_samples//1000)+2):
@@ -90,7 +96,9 @@ def main():
         threads.append(t)
         t.start()
 
-    for thread in track(threads):
+    print(f"Started {len(threads)} threads...")
+
+    for thread in threads:
         thread.join()
 
      # Check if we should write to a file if so do that
